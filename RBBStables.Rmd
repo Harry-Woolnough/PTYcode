@@ -1,0 +1,539 @@
+---
+title: "RBBStables"
+author: "Harry Woolnough"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+      toc: true
+      toc_float: true
+      toc_depth: 5
+      code_folding: hide
+  
+
+
+---
+---
+# Example initial data
+```{r,  warning = FALSE,message = FALSE }
+#This chunk loads one of the initial data sets to show where the data has come from
+#The kable command makes the tables look nicer, and the scroll box command adds a scoll bar to reduce the width of the table
+library(knitr)
+library(tidyverse)
+library(kableExtra)
+example_df<-as.data.frame(read.csv("rTg4510/rTg4510-DMPsGenotype_annotatedCLEAN.csv"))
+kable(head(example_df)) %>% 
+  kable_styling() %>% 
+  scroll_box(width = "800px")
+  
+```
+
+
+
+# Final data table
+```{r, message = FALSE, warning = FALSE,  }
+
+#This chunk creates a summary table of all of the different data files
+
+library(gridExtra)
+
+#creating vectors of the data frame columns and rows, as well as the names of the files
+v<-c("rTg4510/rTg4510-DMPsGenotype_annotatedCLEAN.csv", "rTg4510/rTg4510-DMPsGenotype_annotatedMethylDiffFiltered.csv", "rTg4510/rTg4510-DMPsPathology_annotated_DiffMeth.csv", "J20/J20-DMPsGenotype_annotatedCLEAN.csv", "J20/J20-DMPsGenotype_annotatedMethylDiffFiltered.csv","J20/J20-DMPsPathology_annotated_DiffMeth.csv")
+cnames<-c("rTg4510- Clean","rTg4510-GeneDiffMet", "rTg4510-PathDiffMeth","J20- Clean","J20-GeneDiffMet", "J20-PathDiffMeth" )
+r<-c("Number of sites",  "Number of annotated genes",  "Number of annotated genes in gene body", "Proportion of sites in gene body", "Proportion of DMPs within 100bp of a gene", "Proportion of DMPs within 1kb of a gene ", "Proportion of DMPs within 100kb of a gene", "Proportion of DMPs >100Kb from a gene"
+)
+df<-data.frame()
+
+#a loop which calculates and sorts all of the data which is wanted, and places it in the correct position in the data frame
+for (i in 1:6){
+  
+  data<-read.csv(v[i])
+  totalgenes<-length(unique(data$Nearest_Gene))
+  genes<-length(unique(data$Gene))
+  df[1,i]<-as.character(nrow(data))
+  df[2,i]<-as.character(totalgenes)
+  df[3,i]<-as.character(genes)
+  df[4,i]<-round(genes/nrow(data), digits = 4)
+  pdata<-data$Distance_to_gene
+  pdata1000<-length(pdata[pdata<1000 & pdata !=0])
+  p1000<-pdata1000/nrow(data)
+  pdata100000<-length(pdata[pdata<100000 & pdata !=0])
+  p100000<-pdata100000/nrow(data)
+  pdata100<-length(pdata[pdata<100 & pdata !=0])
+  p100<-pdata100/nrow(data)
+  pdatamore<-length(pdata[pdata>100000])
+  pmore<-pdatamore/nrow(data)
+  
+  df[5,i]<-round(p100, digits = 4)
+  df[6, i]<-round(p1000, digits = 4)
+  df[7,i]<-round(p100000, digits = 4)
+  df[8,i]<-round(pmore, digits = 4)  
+}
+
+#setting col and row names, as well as turning off scientific notion 
+rownames(df)<-r
+colnames(df)<-cnames
+df<-format(df, scientific = F)
+
+library(knitr)
+library(kableExtra)
+library(tidyverse)
+knitr::kable(df) %>% 
+  kable_styling()
+```
+
+# Venn diagrams {.tabset}
+## Clean
+```{r, message = FALSE, warning = FALSE}
+
+#The next three chunks all create similar venn diagrams but use different data sets, these were created using the venndiagram package and http://venndiagram.oicr.on.ca/
+
+library(VennDiagram)
+data1 <- read.delim( file = "rtgclean", header = TRUE, sep = ",", quote = "\"", stringsAsFactors=TRUE, as.is= FALSE);
+
+data2 <- read.delim( file = "J20clean", header = TRUE, sep = ",", quote = "\"", stringsAsFactors=TRUE, as.is= FALSE);
+
+plt<-venn.diagram ( 
+	main = "rTg4510s VS J20s - DMPsGenotype_annotatedCLEAN", 
+	main.pos = c( 0.5, 1.05), 
+	main.just = c( 0.5, 1), 
+	sub.pos = c( 0.5, 1.05), 
+	sub.just = c( 0.5, 1), 
+	lwd = 2, 
+	lty = "solid", 
+	col = "black", 
+	fill = c( "dodgerblue", "goldenrod1"), 
+	alpha = 0.5, 
+	rotation.degree = 0, 
+	rotation.centre = c( 0.5, 0.5), 
+	reverse = FALSE, 
+	inverted = FALSE, 
+	label.col = "black", 
+	cex = 1, 
+	fontface = "plain", 
+	fontfamily = "serif", 
+	category.names = c( "rTg4510", "J20"), 
+	cat.dist = 0.1, 
+	cat.cex = 1, 
+	cat.col = "black", 
+	cat.fontface = "plain", 
+	cat.fontfamily = "serif", 
+	cat.prompts = FALSE, 
+	ext.text = FALSE, 
+	ext.pos = "", 
+	ext.percent = "", 
+	ext.line.lwd = "", 
+	ext.line.lty = "", 
+	ext.dist = "", 
+	ext.length = "", 
+	euler.d = TRUE, 
+	scaled = TRUE, 
+	sep.dist = 0.05, 
+	offset = 0, 
+	height = 15, 
+	width = 10, 
+	resolution = 1500, 
+	description = "", 
+	x = list(x1 = data1$x, x2 = data2$x), 
+	units = "in", filename = NULL)
+
+grid::grid.draw(plt)
+```
+
+## Genotype
+
+```{r, message = FALSE, warning = FALSE}
+library(VennDiagram)
+data1 <- read.delim( file = "rtggene", header = TRUE, sep = ",", quote = "\"", stringsAsFactors=TRUE, as.is= FALSE);
+
+data2 <- read.delim( file = "J20gen", header = TRUE, sep = ",", quote = "\"", stringsAsFactors=TRUE, as.is= FALSE);
+
+plt<-venn.diagram ( 
+	main = "rTg4510s VS J20s - DMPsGenotype_annotatedMethylDiffFiltered", 
+	main.pos = c( 0.5, 1.05), 
+	main.just = c( 0.5, 1), 
+	sub.pos = c( 0.5, 1.05), 
+	sub.just = c( 0.5, 1), 
+	lwd = 2, 
+	lty = "solid", 
+	col = "black", 
+	fill = c( "dodgerblue", "goldenrod1"), 
+	alpha = 0.5, 
+	rotation.degree = 0, 
+	rotation.centre = c( 0.5, 0.5), 
+	reverse = FALSE, 
+	inverted = FALSE, 
+	label.col = "black", 
+	cex = 1, 
+	fontface = "plain", 
+	fontfamily = "serif", 
+	category.names = c( "rTg4510", "J20"), 
+	cat.dist = 0.1, 
+	cat.cex = 1, 
+	cat.col = "black", 
+	cat.fontface = "plain", 
+	cat.fontfamily = "serif", 
+	cat.prompts = FALSE, 
+	ext.text = FALSE, 
+	ext.pos = "", 
+	ext.percent = "", 
+	ext.line.lwd = "", 
+	ext.line.lty = "", 
+	ext.dist = "", 
+	ext.length = "", 
+	euler.d = TRUE, 
+	scaled = TRUE, 
+	sep.dist = 0.05, 
+	offset = 0, 
+	height = 15, 
+	width = 10, 
+	resolution = 1500, 
+	description = "", 
+	x = list(x1 = data1$x, x2 = data2$x), 
+	units = "in", filename = NULL)
+
+grid::grid.draw(plt)
+```
+
+## Pathology
+
+```{r, message = FALSE, warning = FALSE}
+library(VennDiagram)
+data1 <- read.delim( file = "rtgpath", header = TRUE, sep = ",", quote = "\"", stringsAsFactors=TRUE, as.is= FALSE);
+
+data2 <- read.delim( file = "J20path", header = TRUE, sep = ",", quote = "\"", stringsAsFactors=TRUE, as.is= FALSE);
+
+plt<-venn.diagram ( 
+	main = "rTg4510s VS J20s - DMPsPathology_annotated_DiffMeth", 
+	main.pos = c( 0.5, 1.05), 
+	main.just = c( 0.5, 1), 
+	sub.pos = c( 0.5, 1.05), 
+	sub.just = c( 0.5, 1), 
+	lwd = 2, 
+	lty = "solid", 
+	col = "black", 
+	fill = c( "dodgerblue", "goldenrod1"), 
+	alpha = 0.5, 
+	rotation.degree = 0, 
+	rotation.centre = c( 0.5, 0.5), 
+	reverse = FALSE, 
+	inverted = FALSE, 
+	label.col = "black", 
+	cex = 1, 
+	fontface = "plain", 
+	fontfamily = "serif", 
+	category.names = c( "rTg4510", "J20"), 
+	cat.dist = 0.1, 
+	cat.cex = 1, 
+	cat.col = "black", 
+	cat.fontface = "plain", 
+	cat.fontfamily = "serif", 
+	cat.prompts = FALSE, 
+	ext.text = FALSE, 
+	ext.pos = "", 
+	ext.percent = "", 
+	ext.line.lwd = "", 
+	ext.line.lty = "", 
+	ext.dist = "", 
+	ext.length = "", 
+	euler.d = TRUE, 
+	scaled = TRUE, 
+	sep.dist = 0.05, 
+	offset = 0, 
+	height = 15, 
+	width = 10, 
+	resolution = 1500, 
+	description = "", 
+	x = list(x1 = data1$x, x2 = data2$x), 
+	units = "in", filename = NULL)
+
+grid::grid.draw(plt)
+```
+
+# Bar & Pie charts {.tabset}
+
+## rTg4510-CLEAN
+
+```{r,message = FALSE, warning = FALSE}
+#The next 6 chunks are all identical apart from the data being different.
+#These chunks calculate the data in a similar way to the first table, it then creates
+#a bar chart comparing sites to genes and a pie chart comparing the distances of sites to genes
+
+library(ggplot2)
+library(RColorBrewer)
+library(ggpubr)
+library(scales)
+par(mfrow=c(2,2))
+my_pallete<- brewer.pal(5,"Oranges")
+
+data<-read.csv("rTg4510/rTg4510-DMPsGenotype_annotatedCLEAN.csv")
+neargenes<-unique(data$Nearest_Gene)
+ngenes<- unique(data$Gene)
+pdata<-data$Distance_to_gene
+pdata1000<-length(pdata[pdata<1000 & pdata !=0])
+p1000<-pdata1000/nrow(data)
+pdata100<-length(pdata[pdata<100 & pdata !=0])
+p100<-pdata100/nrow(data)
+pdatamore<-length(pdata[pdata>100000])
+pmore<-pdatamore/nrow(data)
+pdata100000<-length(pdata[pdata<100000 & pdata !=0])
+p100000<-pdata100000/nrow(data)
+p0data<-length(pdata[pdata == 0])
+p0<-p0data/nrow(data)
+5
+bardata<-data.frame(
+  value= c(length(neargenes), nrow(data)),
+  group= c("Annotated Genes", "Sites")
+)
+
+
+ggplot(bardata,aes(x = group, y = value, fill = group)) + geom_bar(stat="identity") + ggtitle("Number of annotated genes vs Number of sites") + geom_text(aes(label = value)) + theme_classic() + scale_fill_manual(values = my_pallete)
+
+#using the distance proportions a data frame is made for the piechart ,which is made with ggplot
+piedata<-data.frame(
+  value = c(p0, p100,(p1000-p100), (p100000-p1000), pmore ),
+  group = c("n = 0", "n<100bp", "100bp<n<1kb", "1kb<n<100Kb","n>100000")
+)
+
+ggplot(piedata, aes(x="", y=value, fill = group))+
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start=0) + geom_text(aes(label = percent(value)), size=3, position=position_stack(vjust=0.5))+
+theme_void() + ggtitle("Distance of DMPs from a gene")  + scale_fill_manual(values = my_pallete)
+
+#using the ggarrange package to combine more than on plot into one image
+#ggarrange(bc,pc, labels = c("A", "B"), ncol=2, nrow= 1)
+```
+
+## rTg4510-Genotype
+
+```{r,message = FALSE, warning = FALSE}
+library(ggplot2)
+library(RColorBrewer)
+library(ggpubr)
+library(scales)
+par(mfrow=c(2,2))
+my_pallete<- brewer.pal(5,"Oranges")
+
+data<-read.csv("rTg4510/rTg4510-DMPsGenotype_annotatedMethylDiffFiltered.csv")
+neargenes<-unique(data$Nearest_Gene)
+ngenes<- unique(data$Gene)
+pdata<-data$Distance_to_gene
+pdata1000<-length(pdata[pdata<1000 & pdata !=0])
+p1000<-pdata1000/nrow(data)
+pdata100<-length(pdata[pdata<100 & pdata !=0])
+p100<-pdata100/nrow(data)
+pdatamore<-length(pdata[pdata>100000])
+pmore<-pdatamore/nrow(data)
+pdata100000<-length(pdata[pdata<100000 & pdata !=0])
+p100000<-pdata100000/nrow(data)
+p0data<-length(pdata[pdata == 0])
+p0<-p0data/nrow(data)
+bardata<-data.frame(
+  value= c(length(neargenes), nrow(data)),
+  group= c("Annotated Genes", "Sites")
+)
+
+
+ggplot(bardata,aes(x = group, y = value, fill = group)) + geom_bar(stat="identity") + ggtitle("Number of annotated genes vs Number of sites") + geom_text(aes(label = value)) + theme_classic() + scale_fill_manual(values = my_pallete)
+
+#using the distance proportions a data frame is made for the piechart ,which is made with ggplot
+piedata<-data.frame(
+  value = c(p0, p100,(p1000-p100), (p100000-p1000), pmore ),
+  group = c("n = 0", "n<100bp", "100bp<n<1kb", "1kb<n<100Kb","n>100000")
+)
+
+ggplot(piedata, aes(x="", y=value, fill = group))+
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start=0) + geom_text(aes(label = percent(value)), size=3, position=position_stack(vjust=0.5))+
+theme_void() + ggtitle("Distance of DMPs from a gene")  + scale_fill_manual(values = my_pallete)
+
+#using the ggarrange package to combine more than on plot into one image
+#ggarrange(bc,pc, labels = c("A", "B"), ncol=2, nrow= 1)
+```
+
+## rTg4510-Pathology
+
+```{r,message = FALSE, warning = FALSE}
+library(ggplot2)
+library(RColorBrewer)
+library(ggpubr)
+library(scales)
+par(mfrow=c(2,2))
+my_pallete<- brewer.pal(5,"Oranges")
+
+data<-read.csv("rTg4510/rTg4510-DMPsPathology_annotated_DiffMeth.csv")
+neargenes<-unique(data$Nearest_Gene)
+ngenes<- unique(data$Gene)
+pdata<-data$Distance_to_gene
+pdata1000<-length(pdata[pdata<1000 & pdata !=0])
+p1000<-pdata1000/nrow(data)
+pdata100<-length(pdata[pdata<100 & pdata !=0])
+p100<-pdata100/nrow(data)
+pdatamore<-length(pdata[pdata>100000])
+pmore<-pdatamore/nrow(data)
+pdata100000<-length(pdata[pdata<100000 & pdata !=0])
+p100000<-pdata100000/nrow(data)
+p0data<-length(pdata[pdata == 0])
+p0<-p0data/nrow(data)
+bardata<-data.frame(
+  value= c(length(neargenes), nrow(data)),
+  group= c("Annotated Genes", "Sites")
+)
+
+
+ggplot(bardata,aes(x = group, y = value, fill = group)) + geom_bar(stat="identity") + ggtitle("Number of annotated genes vs Number of sites") + geom_text(aes(label = value)) + theme_classic() + scale_fill_manual(values = my_pallete)
+
+#using the distance proportions a data frame is made for the piechart ,which is made with ggplot
+piedata<-data.frame(
+  value = c(p0, p100,(p1000-p100), (p100000-p1000), pmore ),
+  group = c("n = 0", "n<100bp", "100bp<n<1kb", "1kb<n<100Kb","n>100000")
+)
+
+ggplot(piedata, aes(x="", y=value, fill = group))+
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start=0) + geom_text(aes(label = percent(value)), size=3, position=position_stack(vjust=0.5))+
+theme_void() + ggtitle("Distance of DMPs from a gene")  + scale_fill_manual(values = my_pallete)
+
+#using the ggarrange package to combine more than on plot into one image
+#ggarrange(bc,pc, labels = c("A", "B"), ncol=2, nrow= 1)
+```
+
+## J20-CLEAN
+
+```{r,message = FALSE, warning = FALSE}
+library(ggplot2)
+library(RColorBrewer)
+library(ggpubr)
+library(scales)
+par(mfrow=c(2,2))
+my_pallete<- brewer.pal(5,"Oranges")
+
+data<-read.csv("J20/J20-DMPsGenotype_annotatedCLEAN.csv")
+neargenes<-unique(data$Nearest_Gene)
+ngenes<- unique(data$Gene)
+pdata<-data$Distance_to_gene
+pdata1000<-length(pdata[pdata<1000 & pdata !=0])
+p1000<-pdata1000/nrow(data)
+pdata100<-length(pdata[pdata<100 & pdata !=0])
+p100<-pdata100/nrow(data)
+pdatamore<-length(pdata[pdata>100000])
+pmore<-pdatamore/nrow(data)
+pdata100000<-length(pdata[pdata<100000 & pdata !=0])
+p100000<-pdata100000/nrow(data)
+p0data<-length(pdata[pdata == 0])
+p0<-p0data/nrow(data)
+bardata<-data.frame(
+  value= c(length(neargenes), nrow(data)),
+  group= c("Annotated Genes", "Sites")
+)
+
+
+ggplot(bardata,aes(x = group, y = value, fill = group)) + geom_bar(stat="identity") + ggtitle("Number of annotated genes vs Number of sites") + geom_text(aes(label = value)) + theme_classic() + scale_fill_manual(values = my_pallete)
+
+#using the distance proportions a data frame is made for the piechart ,which is made with ggplot
+piedata<-data.frame(
+  value = c(p0, p100,(p1000-p100), (p100000-p1000), pmore ),
+  group = c("n = 0", "n<100bp", "100bp<n<1kb", "1kb<n<100Kb","n>100000")
+)
+
+ggplot(piedata, aes(x="", y=value, fill = group))+
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start=0) + geom_text(aes(label = percent(value)), size=3, position=position_stack(vjust=0.5))+
+theme_void() + ggtitle("Distance of DMPs from a gene")  + scale_fill_manual(values = my_pallete)
+
+#using the ggarrange package to combine more than on plot into one image
+#ggarrange(bc,pc, labels = c("A", "B"), ncol=2, nrow= 1)
+```
+
+## J20-Genotype
+
+```{r,message = FALSE, warning = FALSE}
+library(ggplot2)
+library(RColorBrewer)
+library(ggpubr)
+library(scales)
+par(mfrow=c(2,2))
+my_pallete<- brewer.pal(5,"Oranges")
+
+data<-read.csv("J20/J20-DMPsGenotype_annotatedMethylDiffFiltered.csv")
+neargenes<-unique(data$Nearest_Gene)
+ngenes<- unique(data$Gene)
+pdata<-data$Distance_to_gene
+pdata1000<-length(pdata[pdata<1000 & pdata !=0])
+p1000<-pdata1000/nrow(data)
+pdata100<-length(pdata[pdata<100 & pdata !=0])
+p100<-pdata100/nrow(data)
+pdatamore<-length(pdata[pdata>100000])
+pmore<-pdatamore/nrow(data)
+pdata100000<-length(pdata[pdata<100000 & pdata !=0])
+p100000<-pdata100000/nrow(data)
+p0data<-length(pdata[pdata == 0])
+p0<-p0data/nrow(data)
+bardata<-data.frame(
+  value= c(length(neargenes), nrow(data)),
+  group= c("Annotated Genes", "Sites")
+)
+
+
+ggplot(bardata,aes(x = group, y = value, fill = group)) + geom_bar(stat="identity") + ggtitle("Number of annotated genes vs Number of sites") + geom_text(aes(label = value)) + theme_classic() + scale_fill_manual(values = my_pallete)
+
+#using the distance proportions a data frame is made for the piechart ,which is made with ggplot
+piedata<-data.frame(
+  value = c(p0, p100,(p1000-p100), (p100000-p1000), pmore ),
+  group = c("n = 0", "n<100bp", "100bp<n<1kb", "1kb<n<100Kb","n>100000")
+)
+
+ggplot(piedata, aes(x="", y=value, fill = group))+
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start=0) + geom_text(aes(label = percent(value)), size=3, position=position_stack(vjust=0.5))+
+theme_void() + ggtitle("Distance of DMPs from a gene")  + scale_fill_manual(values = my_pallete)
+
+#using the ggarrange package to combine more than on plot into one image
+#ggarrange(bc,pc, labels = c("A", "B"), ncol=2, nrow= 1)
+```
+
+## J20-Pathology
+
+```{r,message = FALSE, warning = FALSE}
+library(ggplot2)
+library(RColorBrewer)
+library(ggpubr)
+library(scales)
+par(mfrow=c(2,2))
+my_pallete<- brewer.pal(5,"Oranges")
+
+data<-read.csv("J20/J20-DMPsPathology_annotated_DiffMeth.csv")
+neargenes<-unique(data$Nearest_Gene)
+ngenes<- unique(data$Gene)
+pdata<-data$Distance_to_gene
+pdata1000<-length(pdata[pdata<1000 & pdata !=0])
+p1000<-pdata1000/nrow(data)
+pdata100<-length(pdata[pdata<100 & pdata !=0])
+p100<-pdata100/nrow(data)
+pdatamore<-length(pdata[pdata>100000])
+pmore<-pdatamore/nrow(data)
+pdata100000<-length(pdata[pdata<100000 & pdata !=0])
+p100000<-pdata100000/nrow(data)
+p0data<-length(pdata[pdata == 0])
+p0<-p0data/nrow(data)
+bardata<-data.frame(
+  value= c(length(neargenes), nrow(data)),
+  group= c("Annotated Genes", "Sites")
+)
+
+
+ggplot(bardata,aes(x = group, y = value, fill = group)) + geom_bar(stat="identity") + ggtitle("Number of annotated genes vs Number of sites") + geom_text(aes(label = value)) + theme_classic() + scale_fill_manual(values = my_pallete)
+
+#using the distance proportions a data frame is made for the piechart ,which is made with ggplot
+piedata<-data.frame(
+  value = c(p0, p100,(p1000-p100), (p100000-p1000), pmore ),
+  group = c("n = 0", "n<100bp", "100bp<n<1kb", "1kb<n<100Kb","n>100000")
+)
+
+ggplot(piedata, aes(x="", y=value, fill = group))+
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start=0) + geom_text(aes(label = percent(value)), size=3, position=position_stack(vjust=0.5))+
+theme_void() + ggtitle("Distance of DMPs from a gene")  + scale_fill_manual(values = my_pallete)
+
+#using the ggarrange package to combine more than on plot into one image
+#ggarrange(bc,pc, labels = c("A", "B"), ncol=2, nrow= 1)
+```
